@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Detection Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 150px;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.spam {
+            background-color: #fee;
+            border: 2px solid #f44336;
+        }
+        
+        .result.ham {
+            background-color: #efe;
+            border: 2px solid #4caf50;
+        }
+        
+        .result-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .result.spam .result-title {
+            color: #d32f2f;
+        }
+        
+        .result.ham .result-title {
+            color: #388e3c;
+        }
+        
+        .result-details {
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .error {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Spam Detection Tool</h1>
+        <p class="subtitle">Enter your message to check if it's spam</p>
+        
+        <textarea 
+            id="messageInput" 
+            placeholder="Type or paste your message here...&#10;&#10;Example: 'Congratulations! You've won a free iPhone. Click here to claim now!'"
+        ></textarea>
+        
+        <button onclick="checkSpam()" id="checkButton">
+            Check Message
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Analyzing...</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        // Make the API URL relative so it works on any domain
+        const API_URL = '';
+
+        async function checkSpam() {
+            const messageInput = document.getElementById('messageInput');
+            const checkButton = document.getElementById('checkButton');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            
+            const message = messageInput.value.trim();
+            
+            // Validation
+            if (!message) {
+                showError('Please enter a message to check');
+                return;
+            }
+            
+            // Reset displays
+            result.style.display = 'none';
+            error.style.display = 'none';
+            loading.style.display = 'block';
+            checkButton.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/classify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const data = await response.json();
+                displayResult(data);
+                
+            } catch (err) {
+                showError('Failed to connect to the API. Make sure the backend is running.');
+                console.error('Error:', err);
+            } finally {
+                loading.style.display = 'none';
+                checkButton.disabled = false;
+            }
+        }
+        
+        function displayResult(data) {
+            const result = document.getElementById('result');
+            const confidencePercent = (data.confidence * 100).toFixed(2);
+            
+            result.className = 'result ' + (data.is_spam ? 'spam' : 'ham');
+            result.innerHTML = `
+                <div class="result-title">
+                    ${data.is_spam ? '⚠️ This is SPAM!' : '✅ This is HAM (Not Spam)'}
+                </div>
+                <div class="result-details">
+                    <strong>Category:</strong> ${data.category}<br>
+                    <strong>Confidence:</strong> ${confidencePercent}%<br>
+                    <strong>Processing Time:</strong> ${data.processing_time_ms}ms
+                </div>
+            `;
+            result.style.display = 'block';
+        }
+        
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        // Allow Enter key to submit (Ctrl+Enter for new line)
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.ctrlKey) {
+                e.preventDefault();
+                checkSpam();
+            }
+        });
+    </script>
+</body>
+</html>
