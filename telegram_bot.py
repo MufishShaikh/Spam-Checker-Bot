@@ -10,8 +10,10 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN_HERE"
 
 # Local or Cloud backend URL
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-# We can just call localhost directly since they run in the same container now
-SPAM_API_URL = "http://127.0.0.1:8000/classify"
+
+# Render changes the port dynamically, so we must grab it from the environment!
+PORT = os.environ.get("PORT", "8000")
+SPAM_API_URL = f"http://127.0.0.1:{PORT}/classify"
 
 def get_updates(offset=None):
     """Fetches new messages from Telegram API"""
